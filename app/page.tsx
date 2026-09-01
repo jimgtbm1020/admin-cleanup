@@ -21,22 +21,22 @@ export default function Home(){
     const {data,error}=await supabase.auth.signInWithPassword({email,password});
     setBusy(false);
     if(error||!data.session){setResult(error?.message||'Administrator sign-in failed.');return;}
-    setSignedIn(true); setResult('Authenticated. Review the directory rename targets, then invoke the action.');
+    setSignedIn(true); setResult('Authenticated. Review the directory action targets.');
   }
 
-  async function renameAgencies(){
+  async function invoke(action:string){
     setBusy(true); setResult('');
     const {data:{session}}=await supabase.auth.getSession();
     if(!session){setBusy(false);setResult('Session expired. Sign in again.');return;}
-    const {data,error}=await supabase.rpc('rename_demo_agencies');
+    const {data,error}=await supabase.rpc(action);
     setBusy(false); setResult(error?error.message:JSON.stringify(data,null,2));
   }
 
   return <main className="shell"><section className="card">
-    <h1>Admin Agency Directory Rename</h1>
-    <p>This authenticated admin-only tool renames exactly three retired demo agencies to Demo 1, Demo 2, and Demo 3. It does not delete or edit certified records, certificate snapshots, attendance history, users, system configuration, or Production deployments.</p>
+    <h1>Admin Agency Directory Maintenance</h1>
+    <p>Authenticated admin-only actions for exactly three retired demo agencies. Certified records, certificate snapshots, attendance history, users, system configuration, and Production deployments are not changed.</p>
     <div className="targets">{targets.map(t=><code key={t}>{t}</code>)}</div>
-    {!signedIn?<><h2>Administrator sign-in</h2><div className="row"><input type="email" placeholder="Admin email" value={email} onChange={e=>setEmail(e.target.value)}/><input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)}/><button disabled={busy||!email||!password} onClick={signIn}>Sign in</button></div></>:<><p>Authenticated administrator.</p><button disabled={busy} onClick={renameAgencies}>Rename Demo Agencies</button></>}
+    {!signedIn?<><h2>Administrator sign-in</h2><div className="row"><input type="email" placeholder="Admin email" value={email} onChange={e=>setEmail(e.target.value)}/><input type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)}/><button disabled={busy||!email||!password} onClick={signIn}>Sign in</button></div></>:<><p>Authenticated administrator.</p><div className="row"><button disabled={busy} onClick={()=>invoke('rename_demo_agencies')}>Rename Demo Agencies</button><button disabled={busy} onClick={()=>invoke('clear_demo_agency_contact_info')}>Clear Directory Contact Info</button></div></>}
     {result&&<div className="status">{result}</div>}
   </section></main>;
 }
