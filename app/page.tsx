@@ -2,10 +2,17 @@
 import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase=createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+let supabase: ReturnType<typeof createClient> | null = null;
+
+function getSupabase(){
+  if(!supabase){
+    const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if(!url||!key) throw new Error('Supabase configuration is unavailable.');
+    supabase=createClient(url,key);
+  }
+  return supabase;
+}
 
 const targets=['Demo 1','Demo 2','Demo 3'];
 
@@ -18,18 +25,26 @@ export default function Home(){
 
   async function signIn(){
     setBusy(true); setResult('');
-    const {data,error}=await supabase.auth.signInWithPassword({email,password});
-    setBusy(false);
-    if(error||!data.session){setResult(error?.message||'Administrator sign-in failed.');return;}
-    setSignedIn(true); setResult('Authenticated. Review the directory action targets.');
+    try{
+      const {data,error}=await getSupabase().auth.signInWithPassword({email,password});
+      if(error||!data.session){setResult(error?.message||'Administrator sign-in failed.');return;}
+      setSignedIn(true); setResult('Authenticated. Review the directory action targets.');
+    }catch(error){
+      setResult(error instanceof Error?error.message:'Administrator sign-in failed.');
+    }finally{setBusy(false);}
   }
 
   async function invoke(action:string){
     setBusy(true); setResult('');
-    const {data:{session}}=await supabase.auth.getSession();
-    if(!session){setBusy(false);setResult('Session expired. Sign in again.');return;}
-    const {data,error}=await supabase.rpc(action);
-    setBusy(false); setResult(error?error.message:JSON.stringify(data,null,2));
+    try{
+      const client=getSupabase();
+      const {data:{session}}=await client.auth.getSession();
+      if(!session){setResult('Session expired. Sign in again.');return;}
+      const {data,error}=await client.rpc(action);
+      setResult(error?error.message:JSON.stringify(data,null,2));
+    }catch(error){
+      setResult(error instanceof Error?error.message:'Action failed.');
+    }finally{setBusy(false);}
   }
 
   return <main className="shell"><section className="card">
