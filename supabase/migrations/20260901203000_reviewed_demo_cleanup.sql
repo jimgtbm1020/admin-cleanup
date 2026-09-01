@@ -130,7 +130,9 @@ declare
   v_deleted integer;
   v_total integer := 0;
 begin
-  if not private.demo_cleanup_authorized() then
+  perform set_config('app.demo_cleanup_token', 'demo-cleanup-v1', true);
+
+  if auth.uid() is null or public.current_user_role() not in ('admin', 'coordinator') then
     raise exception 'Administrator authorization required.';
   end if;
 
@@ -173,7 +175,6 @@ begin
   delete from public.training_completion_records
    where completion_number in ('BTC-2026-0001', 'BTC-2026-0002');
 
-  perform set_config('app.demo_cleanup_token', 'demo-cleanup-v1', true);
   delete from public.training_requests where id = any(v_request_ids);
   perform set_config('app.demo_cleanup_token', '', true);
 
